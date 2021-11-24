@@ -28,59 +28,82 @@ import br.com.erudio.services.BookServices;
 import io.swagger.annotations.Api;
 import io.swagger.annotations.ApiOperation;
 
-@Api(value="Book endpoint", description="endpoint to book", tags= {"BookEndpoint"})
-//@CrossOrigin
+@Api(value = "Book endpoint", description = "endpoint to book", tags = { "BookEndpoint" })
+// @CrossOrigin
 @RestController
 @RequestMapping("/api/book/v1")
 public class BookController {
-	
+
 	@Autowired
 	private BookServices service;
-	
-//	@CrossOrigin(origins = "http://www.lidiateste.com.br")
-	@ApiOperation(value="find all books")
-	@GetMapping(produces = {"application/json", "application/xml", "application/x-yaml"})
-	public ResponseEntity<PagedResources<BookVO>> findAll(@RequestParam(value = "page", defaultValue = "0") int page,
-	@RequestParam(value = "limit", defaultValue = "12") int limit,
-	@RequestParam(value = "direction", defaultValue = "asc") String direction,
-	PagedResourcesAssembler assembler) {
-		var sortDirection = "desc".equalsIgnoreCase(direction)? Direction.DESC: Direction.ASC;
+
+	@Autowired
+	private PagedResourcesAssembler<BookVO> assembler;
+
+	// @CrossOrigin(origins = "http://www.lidiateste.com.br")
+	@ApiOperation(value = "find all books with pagination")
+	@GetMapping(produces = { "application/json", "application/xml", "application/x-yaml" })
+	public ResponseEntity<?> findAll(@RequestParam(value = "page", defaultValue = "0") int page,
+			@RequestParam(value = "limit", defaultValue = "12") int limit,
+			@RequestParam(value = "direction", defaultValue = "asc") String direction) {
+		var sortDirection = "desc".equalsIgnoreCase(direction) ? Direction.DESC : Direction.ASC;
 		Pageable pageable = PageRequest.of(page, limit, Sort.by(sortDirection, "title"));
 
 		Page<BookVO> books = service.findAll(pageable);
 		books.stream().forEach(p -> p.add(linkTo(methodOn(BookController.class).findById(p.getKey())).withSelfRel()));
-		return new ResponseEntity<>(assembler.toResource(books), HttpStatus.OK);
+
+		PagedResources<?> resource = assembler.toResource(books);
+		return new ResponseEntity<>(resource, HttpStatus.OK);
 	}
-	
-	@ApiOperation(value="find book by id")
-	@GetMapping(value="/{id}", produces = {"application/json", "application/xml", "application/x-yaml"})
+
+	@ApiOperation(value = "find all books with pagination and path params")
+	@GetMapping(value = "/findBookByTitle/{title}", produces = { "application/json", "application/xml",
+			"application/x-yaml" })
+	public ResponseEntity<?> findBookByTitle(@PathVariable("title") String title,
+			@RequestParam(value = "page", defaultValue = "0") int page,
+			@RequestParam(value = "limit", defaultValue = "12") int limit,
+			@RequestParam(value = "direction", defaultValue = "asc") String direction) {
+		var sortDirection = "desc".equalsIgnoreCase(direction) ? Direction.DESC : Direction.ASC;
+		Pageable pageable = PageRequest.of(page, limit, Sort.by(sortDirection, "title"));
+
+		Page<BookVO> books = service.findBookByTitle(title, pageable);
+		books.stream().forEach(p -> p.add(linkTo(methodOn(BookController.class).findById(p.getKey())).withSelfRel()));
+
+		PagedResources<?> resource = assembler.toResource(books);
+		return new ResponseEntity<>(resource, HttpStatus.OK);
+	}
+
+	@ApiOperation(value = "find book by id")
+	@GetMapping(value = "/{id}", produces = { "application/json", "application/xml", "application/x-yaml" })
 	public BookVO findById(@PathVariable("id") Long id) {
 		BookVO bookVO = service.findById(id);
 		bookVO.add(linkTo(methodOn(BookController.class).findById(id)).withSelfRel());
 		return bookVO;
-	}	
-	
-	@ApiOperation(value="register book")
-	@PostMapping(produces = {"application/json", "application/xml", "application/x-yaml"},consumes = {"application/json", "application/xml", "application/x-yaml"})
+	}
+
+	@ApiOperation(value = "register book")
+	@PostMapping(produces = { "application/json", "application/xml", "application/x-yaml" }, consumes = {
+			"application/json", "application/xml", "application/x-yaml" })
 	public BookVO create(@RequestBody BookVO book) {
-		BookVO bookVO =  service.create(book);
+		BookVO bookVO = service.create(book);
 		bookVO.add(linkTo(methodOn(BookController.class).findById(bookVO.getKey())).withSelfRel());
 		return bookVO;
 	}
-	
-	@ApiOperation(value="edit book")
-	@PutMapping(produces = {"application/json", "application/xml", "application/x-yaml"},consumes = {"application/json", "application/xml", "application/x-yaml"})
+
+	@ApiOperation(value = "edit book")
+	@PutMapping(produces = { "application/json", "application/xml", "application/x-yaml" }, consumes = {
+			"application/json", "application/xml", "application/x-yaml" })
 	public BookVO update(@RequestBody BookVO book) {
-		BookVO bookVO =  service.update(book);
+		BookVO bookVO = service.update(book);
 		bookVO.add(linkTo(methodOn(BookController.class).findById(bookVO.getKey())).withSelfRel());
 		return bookVO;
-	}	
-	
-	@ApiOperation(value="remove book")
+	}
+
+	@ApiOperation(value = "remove book")
 	@DeleteMapping("/{id}")
 	public ResponseEntity<?> delete(@PathVariable("id") Long id) {
 		service.delete(id);
 		return ResponseEntity.ok().build();
-	}	
-	
+	}
+
 }

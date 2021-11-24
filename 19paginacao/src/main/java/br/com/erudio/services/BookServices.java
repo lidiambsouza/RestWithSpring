@@ -22,6 +22,11 @@ public class BookServices {
 		var vo = DozerConverter.parseObject(repository.save(entity), BookVO.class);
 		return vo;
 	}
+
+	public Page<BookVO> findBookByTitle(String title, Pageable pageable) {
+		var page = repository.findBookByTitle(title, pageable);
+		return page.map(this::convertToBookVO);
+	}
 	
 	public Page<BookVO> findAll(Pageable pageable) {
 		var page = repository.findAll(pageable);

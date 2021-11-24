@@ -29,7 +29,6 @@ import br.com.erudio.services.PersonServices;
 import io.swagger.annotations.Api;
 import io.swagger.annotations.ApiOperation;
 
-
 @Api(value = "Person endpoint", description = "endpoint to person", tags = { "PersonEndpoint" })
 // @CrossOrigin
 @RestController
@@ -38,6 +37,9 @@ public class PersonController {
 
 	@Autowired
 	private PersonServices service;
+
+	@Autowired
+	private PagedResourcesAssembler<PersonVO> assembler;
 
 	// @ApiOperation(value="find all peoples")
 	// @GetMapping(produces = {"application/json", "application/xml",
@@ -51,18 +53,38 @@ public class PersonController {
 
 	@ApiOperation(value = "find all peoples with pagination")
 	@GetMapping(produces = { "application/json", "application/xml", "application/x-yaml" })
-	public ResponseEntity<PagedResources<PersonVO>> findAll(@RequestParam(value = "page", defaultValue = "0") int page,
+	public ResponseEntity<?> findAll(@RequestParam(value = "page", defaultValue = "0") int page,
 			@RequestParam(value = "limit", defaultValue = "12") int limit,
-			@RequestParam(value = "direction", defaultValue = "asc") String direction,
-			PagedResourcesAssembler assembler) {
+			@RequestParam(value = "direction", defaultValue = "asc") String direction) {
 
-		var sortDirection = "desc".equalsIgnoreCase(direction)? Direction.DESC: Direction.ASC;
+		var sortDirection = "desc".equalsIgnoreCase(direction) ? Direction.DESC : Direction.ASC;
 		Pageable pageable = PageRequest.of(page, limit, Sort.by(sortDirection, "firstName"));
 
 		Page<PersonVO> persons = service.findAll(pageable);
 		persons.stream()
 				.forEach(p -> p.add(linkTo(methodOn(PersonController.class).findById(p.getKey())).withSelfRel()));
-		return new ResponseEntity<>(assembler.toResource(persons), HttpStatus.OK);
+
+		PagedResources<?> resource = assembler.toResource(persons);
+		return new ResponseEntity<>(resource, HttpStatus.OK);
+	}
+
+	@ApiOperation(value = "find all peoples with pagination and path params")
+	@GetMapping(value = "/findPersonByName/{firstName}", produces = { "application/json", "application/xml",
+			"application/x-yaml" })
+	public ResponseEntity<?> findPersonByName(@PathVariable("firstName") String firstName,
+			@RequestParam(value = "page", defaultValue = "0") int page,
+			@RequestParam(value = "limit", defaultValue = "12") int limit,
+			@RequestParam(value = "direction", defaultValue = "asc") String direction) {
+
+		var sortDirection = "desc".equalsIgnoreCase(direction) ? Direction.DESC : Direction.ASC;
+		Pageable pageable = PageRequest.of(page, limit, Sort.by(sortDirection, "firstName"));
+
+		Page<PersonVO> persons = service.findPersonByName(firstName, pageable);
+		persons.stream()
+				.forEach(p -> p.add(linkTo(methodOn(PersonController.class).findById(p.getKey())).withSelfRel()));
+
+		PagedResources<?> resource = assembler.toResource(persons);
+		return new ResponseEntity<>(resource, HttpStatus.OK);
 	}
 
 	@ApiOperation(value = "find people by id")
