@@ -6,12 +6,15 @@ import java.nio.file.Paths;
 import java.nio.file.StandardCopyOption;
 
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.core.io.Resource;
+import org.springframework.core.io.UrlResource;
 import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
 import org.springframework.web.multipart.MultipartFile;
 
 import br.com.erudio.config.FileStorageConfig;
 import br.com.erudio.exception.FileStorageException;
+import br.com.erudio.exception.MyFileNotFoundException;
 
 @Service
 public class FileStorageServices {
@@ -21,20 +24,18 @@ public class FileStorageServices {
     @Autowired
     public FileStorageServices(FileStorageConfig fileStorageConfig) {
         this.fileStorageLocation = Paths.get(fileStorageConfig.getUploadDir()).toAbsolutePath().normalize();
-        try{
+        try {
             Files.createDirectories(this.fileStorageLocation);
-        }catch(
-        Exception e)
-        {
+        } catch (Exception e) {
             throw new FileStorageException("Could not create the directory where the uploaded files will be stored", e);
         }
     }
 
     public String storeFile(MultipartFile file) {
-        String fileName =StringUtils.cleanPath(file.getOriginalFilename());
+        String fileName = StringUtils.cleanPath(file.getOriginalFilename());
 
         try {
-            if(fileName.contains("..")){
+            if (fileName.contains("..")) {
                 throw new FileStorageException("Sorry! fileName contains invalida path sequence " + fileName);
             }
             Path targetLocation = this.fileStorageLocation.resolve(fileName);
@@ -42,9 +43,24 @@ public class FileStorageServices {
 
             return fileName;
         } catch (Exception e) {
-            throw new FileStorageException("Could not store file "+ fileName +". Plese try again!", e);
+            throw new FileStorageException("Could not store file " + fileName + ". Plese try again!", e);
         }
-        
+
+    }
+
+    public Resource loadFileAsResource(String fileName) {
+        try {
+            Path filePath = this.fileStorageLocation.resolve(fileName).normalize();
+            Resource resource = new UrlResource(filePath.toUri());
+            if (resource.exists()) {
+                return resource;
+            } else {
+                throw new MyFileNotFoundException("file not found " + fileName);
+            }
+
+        } catch (Exception e) {
+            throw new MyFileNotFoundException("file not found " + fileName, e);
+        }
     }
 
 }
